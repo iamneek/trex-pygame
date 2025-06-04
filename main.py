@@ -24,7 +24,7 @@ class Obstacle(pygame.sprite.Sprite):
 
     def get_hitbox(self):
         margin_x = self.rect.width * 0.3
-        margin_y = self.rect.height * 0.3
+        margin_y = self.rect.height * 0.2
         return pygame.Rect(
             self.rect.x + margin_x,
             self.rect.y + margin_y,
@@ -86,13 +86,13 @@ class UI:
         self.dino = Dino(self.gamestate.dino_pos.x, self.gamestate.dino_pos.y, './Assets/trex/idle sequence/1 (1).png')
 
         self.obs1 = Obstacle(self.gamestate.obstacle_x_pos[0], self.gamestate.obstacle_y_pos,
-                             './Assets/trex/idle sequence/1 (1).png')
+                             './Assets/trex/obstacle.png')
         self.obs2 = Obstacle(self.gamestate.obstacle_x_pos[1], self.gamestate.obstacle_y_pos,
-                             './Assets/trex/idle sequence/1 (1).png')
+                             './Assets/trex/obstacle.png')
         self.obs3 = Obstacle(self.gamestate.obstacle_x_pos[2], self.gamestate.obstacle_y_pos,
-                             './Assets/trex/idle sequence/1 (1).png')
+                             './Assets/trex/obstacle.png')
         self.obs4 = Obstacle(self.gamestate.obstacle_x_pos[3], self.gamestate.obstacle_y_pos,
-                             './Assets/trex/idle sequence/1 (1).png')
+                             './Assets/trex/obstacle.png')
 
         self.background_tiles = math.ceil(WINDOW_WIDTH / self.background.get_width()) + 1
         self.scroll = 0
@@ -101,12 +101,30 @@ class UI:
         self.active = True
 
         # font setup
+
         self.font = pygame.font.Font('freesansbold.ttf', 24)
         self.gameOverfont = pygame.font.Font('freesansbold.ttf', 44)
 
         pygame.display.set_caption(WINDOW_TITLE)
         pygame.display.set_icon(pygame.image.load('icon.png'))
         pygame.mouse.set_visible(False)
+
+        # BG music setup
+
+        pygame.mixer.music.load('./Assets/sfx/bg.mp3')
+        pygame.mixer.music.set_volume(0.2)
+        pygame.mixer.music.play(-1)
+
+        # Jump sound setup
+
+        self.jump_sound = pygame.mixer.Sound('./Assets/sfx/jump.wav')
+        self.jump_sound.set_volume(0.3)
+
+        # Game over sound setup
+
+        self.game_over_sound = pygame.mixer.Sound('./Assets/sfx/gaameover.mp3')
+        self.game_over_sound.set_volume(0.1)
+
 
     def process_input(self):
         for event in pygame.event.get():
@@ -117,10 +135,11 @@ class UI:
 
             if event.type == pygame.KEYDOWN and not self.active:
                 if event.key == pygame.K_r:
+                    self.game_over_sound.stop()
                     self.active = True
                     self.gamestate.score = 0
                     self.gamestate.obstacle_x_pos = [800, 1250, 1560, 1980]
-
+                    pygame.mixer.music.play(-1)
                     self.obs1.rect.center = (self.gamestate.obstacle_x_pos[0], self.gamestate.obstacle_y_pos)
                     self.obs2.rect.center = (self.gamestate.obstacle_x_pos[1], self.gamestate.obstacle_y_pos)
                     self.obs3.rect.center = (self.gamestate.obstacle_x_pos[2], self.gamestate.obstacle_y_pos)
@@ -129,6 +148,7 @@ class UI:
             if event.type == pygame.KEYDOWN and self.active:
                 if event.key == pygame.K_SPACE and self.y_change == 0:
                     self.y_change = 60
+                    self.jump_sound.play()
 
         for i in range(len(self.gamestate.obstacle_x_pos)):
             if self.active:
@@ -195,27 +215,46 @@ class UI:
         self.obs4.rect.center = (self.gamestate.obstacle_x_pos[3], self.gamestate.obstacle_y_pos)
         self.window.blit(self.obs4.image, self.obs4.rect)
 
+        # Draw Obstacle and Dino hitboxes jusst for checking
+        # pygame.draw.rect(self.window, (0, 255, 0), self.dino.get_hitbox(), 2)
+        # pygame.draw.rect(self.window, (0, 255, 255), self.obs1.get_hitbox(), 2)
+        # pygame.draw.rect(self.window, (0, 255, 255), self.obs2.get_hitbox(), 2)
+        # pygame.draw.rect(self.window, (0, 255, 255), self.obs3.get_hitbox(), 2)
+        # pygame.draw.rect(self.window, (0, 255, 255), self.obs4.get_hitbox(), 2)
+
         # Score Text
-        if self.gamestate.score < 100:
-            score_obj = self.font.render(f'Score: {self.gamestate.score}', True, (255, 255, 255))
-            self.window.blit(score_obj, (WINDOW_WIDTH - 120, 30))
-        else:
-            score_obj = self.font.render(f'Score: {self.gamestate.score}', True, (255, 255, 255))
-            self.window.blit(score_obj, (WINDOW_WIDTH - 135, 30))
+        if self.active:
+            if self.gamestate.score < 100:
+                score_obj = self.font.render(f'Score: {self.gamestate.score}', True, (255, 255, 255))
+                self.window.blit(score_obj, (WINDOW_WIDTH - 120, 30))
+            else:
+                score_obj = self.font.render(f'Score: {self.gamestate.score}', True, (255, 255, 255))
+                self.window.blit(score_obj, (WINDOW_WIDTH - 135, 30))
 
         # Game over display
 
         if not self.active:
+            pygame.mixer.music.stop()
+            self.game_over_sound.play(-1)
             overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
             overlay.set_alpha(200)
             overlay.fill((0, 0, 0))
             self.window.blit(overlay, (0, 0))
 
-            game_over_text = self.gameOverfont.render("GAME OVER - Press 'R' to Restart", True, (255, 244, 244))
-            self.window.blit(game_over_text, (WINDOW_WIDTH // 2 - 350, WINDOW_HEIGHT // 2))
+            game_over_text = self.gameOverfont.render("GAME OVER", True, (255, 50, 50))
+            self.window.blit(game_over_text, (WINDOW_WIDTH // 2 - 120, WINDOW_HEIGHT // 2 - 50))
 
-            instruction_text = self.font.render("How to play? Just press 'Space' to jump", True, (255, 255, 255))
-            self.window.blit(instruction_text, (WINDOW_WIDTH // 2 - 225, WINDOW_HEIGHT // 2 + 60))
+            score_obj = self.font.render(f'Your Last Score was: {self.gamestate.score}', True, (0, 255, 255))
+            self.window.blit(score_obj, (WINDOW_WIDTH // 2 - 120, WINDOW_HEIGHT // 2 + 200))
+
+            if self.gamestate.score > self.gamestate.high_score:
+                self.gamestate.high_score = self.gamestate.score
+
+            highscore_obj = self.font.render(f'High Score: {self.gamestate.high_score}', True, (255, 255, 0))
+            self.window.blit(highscore_obj, (WINDOW_WIDTH // 2 - 60, WINDOW_HEIGHT // 2 + 230))
+
+            instruction_text = self.font.render("Press 'R' to Restart and 'Space' to jump", True, (255, 255, 255))
+            self.window.blit(instruction_text, (WINDOW_WIDTH // 2 - 210, WINDOW_HEIGHT // 2 + 10))
 
         pygame.display.update()
 

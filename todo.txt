@@ -1,0 +1,3 @@
+TODO: Implement high score feature, use file storage for that
+TODO: Add Animation to Characters
+TODO: Make better obstacle maybe animated sprites if time favors
