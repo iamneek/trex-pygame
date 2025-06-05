@@ -53,10 +53,11 @@ class Dino(pygame.sprite.Sprite):
 class GameState:
     def __init__(self):
         self.score = 0
-        self.high_score = 0
+        self.high_score = self.get_high_score()
         self.dino_pos = Vector2(180, 590)
         self.obstacle_y_pos = 620
         self.obstacle_x_pos = [800, 1250, 1560, 1980]
+        self.get_high_score()
 
     def update(self, move_dino_command):
         self.dino_pos += move_dino_command
@@ -72,6 +73,14 @@ class GameState:
         # elif self.dino_pos.x <= 180:
         #     self.dino_pos.x = 180
 
+    def get_high_score(self):
+        try:
+            with open(f'highscore.txt', 'r') as file:
+                return int(file.readline().strip())
+        except FileNotFoundError:
+            with open(f'highscore.txt', 'w') as file:
+                file.write(str(self.high_score))
+
 
 class UI:
     def __init__(self):
@@ -83,7 +92,7 @@ class UI:
         self.gamestate = GameState()
         self.moveDinoCommand = Vector2(0, 0)
         self.background = pygame.image.load(BACKGROUND_IMAGE).convert()
-        self.dino = Dino(self.gamestate.dino_pos.x, self.gamestate.dino_pos.y, './Assets/trex/idle sequence/1 (1).png')
+        self.dino = Dino(self.gamestate.dino_pos.x, self.gamestate.dino_pos.y, './Assets/trex/walk sequence/1 (1).png')
 
         self.obs1 = Obstacle(self.gamestate.obstacle_x_pos[0], self.gamestate.obstacle_y_pos,
                              './Assets/trex/obstacle.png')
@@ -125,25 +134,25 @@ class UI:
         self.game_over_sound = pygame.mixer.Sound('./Assets/sfx/gaameover.mp3')
         self.game_over_sound.set_volume(0.1)
 
-
     def process_input(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
                 pygame.quit()
                 sys.exit()
-
-            if event.type == pygame.KEYDOWN and not self.active:
-                if event.key == pygame.K_r:
-                    self.game_over_sound.stop()
-                    self.active = True
-                    self.gamestate.score = 0
-                    self.gamestate.obstacle_x_pos = [800, 1250, 1560, 1980]
-                    pygame.mixer.music.play(-1)
-                    self.obs1.rect.center = (self.gamestate.obstacle_x_pos[0], self.gamestate.obstacle_y_pos)
-                    self.obs2.rect.center = (self.gamestate.obstacle_x_pos[1], self.gamestate.obstacle_y_pos)
-                    self.obs3.rect.center = (self.gamestate.obstacle_x_pos[2], self.gamestate.obstacle_y_pos)
-                    self.obs4.rect.center = (self.gamestate.obstacle_x_pos[3], self.gamestate.obstacle_y_pos)
+            if not self.active and (
+                    (event.type == pygame.KEYDOWN and event.key == pygame.K_r) or
+                    (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1)
+            ):
+                self.game_over_sound.stop()
+                self.active = True
+                self.gamestate.score = 0
+                self.gamestate.obstacle_x_pos = [800, 1250, 1560, 1980]
+                pygame.mixer.music.play(-1)
+                self.obs1.rect.center = (self.gamestate.obstacle_x_pos[0], self.gamestate.obstacle_y_pos)
+                self.obs2.rect.center = (self.gamestate.obstacle_x_pos[1], self.gamestate.obstacle_y_pos)
+                self.obs3.rect.center = (self.gamestate.obstacle_x_pos[2], self.gamestate.obstacle_y_pos)
+                self.obs4.rect.center = (self.gamestate.obstacle_x_pos[3], self.gamestate.obstacle_y_pos)
 
             if event.type == pygame.KEYDOWN and self.active:
                 if event.key == pygame.K_SPACE and self.y_change == 0:
@@ -166,7 +175,6 @@ class UI:
                         self.dino.get_hitbox().colliderect(self.obs2.get_hitbox()) or
                         self.dino.get_hitbox().colliderect(self.obs3.get_hitbox()) or
                         self.dino.get_hitbox().colliderect(self.obs4.get_hitbox())):
-
                     self.active = False
                     break
 
@@ -249,6 +257,8 @@ class UI:
 
             if self.gamestate.score > self.gamestate.high_score:
                 self.gamestate.high_score = self.gamestate.score
+                with open(f'highscore.txt', 'w') as file:
+                    file.write(str(self.gamestate.high_score))
 
             highscore_obj = self.font.render(f'High Score: {self.gamestate.high_score}', True, (255, 255, 0))
             self.window.blit(highscore_obj, (WINDOW_WIDTH // 2 - 60, WINDOW_HEIGHT // 2 + 230))
