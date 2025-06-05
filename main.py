@@ -73,9 +73,9 @@ class Dino(pygame.sprite.Sprite):
 
         if self.frame_counter >= len(frames):
             self.frame_counter = 0
-        print(self.frame_counter)
+
         self.current_frame = int(self.frame_counter)
-        print(self.current_frame)
+
         self.image = frames[self.current_frame]
 
     def get_hitbox(self):
@@ -92,11 +92,11 @@ class Dino(pygame.sprite.Sprite):
 class GameState:
     def __init__(self):
         self.score = 0
-        self.high_score = self.get_high_score()
+        self.high_score = GameState.get_high_score()
         self.dino_pos = Vector2(180, 590)
         self.obstacle_y_pos = 620
         self.obstacle_x_pos = [800, 1250, 1560, 1980]
-        self.get_high_score()
+        GameState.get_high_score()
         self.last_score_checkpoint = 0
 
     def update(self, move_dino_command):
@@ -112,14 +112,17 @@ class GameState:
         #     self.dino_pos.x = WINDOW_WIDTH - 50
         # elif self.dino_pos.x <= 180:
         #     self.dino_pos.x = 180
-
-    def get_high_score(self):
+    @staticmethod
+    def get_high_score():
         try:
-            with open(f'highscore.txt', 'r') as file:
-                return int(file.readline().strip())
-        except FileNotFoundError:
-            with open(f'highscore.txt', 'w') as file:
-                file.write(str(self.high_score))
+            with open('highscore.txt', 'r') as file:
+                line = file.readline().strip()
+                return int(line) if line else 0
+        except (FileNotFoundError, ValueError):
+            # File missing or invalid content, create file with 0
+            with open('highscore.txt', 'w') as file:
+                file.write('0')
+            return 0
 
 
 class UI:
