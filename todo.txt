@@ -1,2 +1,0 @@
-TODO: Add Animation to Characters
-TODO: Make better obstacle maybe animated sprites if time favors

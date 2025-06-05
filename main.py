@@ -34,10 +34,49 @@ class Obstacle(pygame.sprite.Sprite):
 
 
 class Dino(pygame.sprite.Sprite):
-    def __init__(self, posx, posy, path_to_image):
+    def __init__(self, posx, posy, image_folder):
         super().__init__()
-        self.image = pygame.transform.scale(pygame.image.load(path_to_image), (180, 180))
+        self.frames = [
+            pygame.transform.scale(
+                pygame.image.load(os.path.join(image_folder, f'1 ({i}).png')),
+                (180, 180)
+            ) for i in range(1, 13)
+        ]
+        self.idle_frames = [
+            pygame.transform.scale(
+                pygame.image.load(os.path.join('./Assets/trex/idle sequence/', f'1 ({i}).png')), (180, 180)
+            ) for i in range(1, 13)
+        ]
+        self.jump_frames = [
+            pygame.transform.scale(
+                pygame.image.load(os.path.join('./Assets/trex/jump sequence/', f'1 ({i}).png')), (185, 185)
+            ) for i in range(1, 13)
+        ]
+
+        self.state = 'walk'
+        self.current_frame = 0
+        self.animation_speed = 0.25
+        self.frame_counter = 0
+
+        self.image = self.frames[self.current_frame]
         self.rect = self.image.get_rect()
+        self.rect.center = (posx, posy)
+
+    def update(self):
+        self.frame_counter += self.animation_speed
+        if self.state == 'walk':
+            frames = self.frames
+        elif self.state == 'jump':
+            frames = self.jump_frames
+        else:
+            frames = self.idle_frames
+
+        if self.frame_counter >= len(frames):
+            self.frame_counter = 0
+        print(self.frame_counter)
+        self.current_frame = int(self.frame_counter)
+        print(self.current_frame)
+        self.image = frames[self.current_frame]
 
     def get_hitbox(self):
         margin_x = self.rect.width * 0.2
@@ -58,6 +97,7 @@ class GameState:
         self.obstacle_y_pos = 620
         self.obstacle_x_pos = [800, 1250, 1560, 1980]
         self.get_high_score()
+        self.last_score_checkpoint = 0
 
     def update(self, move_dino_command):
         self.dino_pos += move_dino_command
@@ -88,11 +128,13 @@ class UI:
         self.running = True
         self.window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
-        self.FPS = 60
         self.gamestate = GameState()
         self.moveDinoCommand = Vector2(0, 0)
         self.background = pygame.image.load(BACKGROUND_IMAGE).convert()
-        self.dino = Dino(self.gamestate.dino_pos.x, self.gamestate.dino_pos.y, './Assets/trex/walk sequence/1 (1).png')
+        self.dino = Dino(self.gamestate.dino_pos.x, self.gamestate.dino_pos.y, './Assets/trex/walk sequence/')
+
+        # Set FPS
+        self.fps = 60
 
         self.obs1 = Obstacle(self.gamestate.obstacle_x_pos[0], self.gamestate.obstacle_y_pos,
                              './Assets/trex/obstacle.png')
@@ -146,6 +188,7 @@ class UI:
             ):
                 self.game_over_sound.stop()
                 self.active = True
+                self.dino.state = 'walk'
                 self.gamestate.score = 0
                 self.gamestate.obstacle_x_pos = [800, 1250, 1560, 1980]
                 pygame.mixer.music.play(-1)
@@ -157,6 +200,7 @@ class UI:
             if event.type == pygame.KEYDOWN and self.active:
                 if event.key == pygame.K_SPACE and self.y_change == 0:
                     self.y_change = 60
+                    self.dino.state = 'jump'
                     self.jump_sound.play()
 
         for i in range(len(self.gamestate.obstacle_x_pos)):
@@ -176,6 +220,7 @@ class UI:
                         self.dino.get_hitbox().colliderect(self.obs3.get_hitbox()) or
                         self.dino.get_hitbox().colliderect(self.obs4.get_hitbox())):
                     self.active = False
+                    self.dino.state = 'idle'
                     break
 
         if self.y_change > 0 or self.gamestate.dino_pos.y < 590:
@@ -187,12 +232,20 @@ class UI:
 
         if self.gamestate.dino_pos.y == 590 and self.y_change < 0:
             self.y_change = 0
+            if not self.active:
+                self.dino.state = 'idle'
+            else:
+                self.dino.state = 'walk'
 
     def update(self):
+        # Increases 1 FPS every 100 points achieved
+        if self.gamestate.score - self.gamestate.last_score_checkpoint >= 100:
+            self.fps += 1
+            self.gamestate.last_score_checkpoint = self.gamestate.score
+
         self.gamestate.update(self.moveDinoCommand)
 
     def render(self):
-
         # Background
         for i in range(0, self.background_tiles):
             self.window.blit(self.background, (i * self.background.get_width() + self.scroll, 0))
@@ -204,6 +257,7 @@ class UI:
             self.scroll = 0
 
         # Dino Sprite
+        self.dino.update()
         self.dino.rect.center = (self.gamestate.dino_pos.x, self.gamestate.dino_pos.y)
         self.window.blit(self.dino.image, self.dino.rect)
 
@@ -273,7 +327,7 @@ class UI:
             self.process_input()
             self.update()
             self.render()
-            self.clock.tick(self.FPS)
+            self.clock.tick(self.fps)
 
 
 game_ui = UI()
